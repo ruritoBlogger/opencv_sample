@@ -1,0 +1,21 @@
+C++ファイルをコンパイルするときのオプション
+-std=c++11 sender.cpp -lzmq -I/usr/local/include/opencv2 -I/usr/local/include/opencv -L/usr/local/lib -lopencv_core -lopencv_imgcodecs -lopencv_highgui
+
+# 次やること
+
+## C++側
+ノートpcのカメラを用いてリアルタイムで画像情報を取得する
+取得した情報はZeroMQを用いてPython側に送信する
+
+## Python側
+取得した画像に対して、
+・何もしない
+・明るさ調整を行う
+の処理を行った時にかかる時間(1秒あたりに何枚の画像を扱うことが出来るのか)を計測する
+
+# その次やること
+
+画像取得: C++ 画像調整: Python
+画像取得: C++ 画像調整: C++
+画像取得: Python 画像調整: Python
+でそれぞれの時間を計測する
