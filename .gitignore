@@ -1,0 +1,13 @@
+# picture data
+*.png
+*.jpg
+*.jpeg
+
+# opencv build data
+/opencv-3.3.0/
+
+# python version
+.python-version
+
+# C++ run file
+a.out
