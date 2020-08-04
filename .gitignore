@@ -2,6 +2,7 @@
 *.png
 *.jpg
 *.jpeg
+*.mp4
 
 # opencv build data
 /opencv-3.3.0/
