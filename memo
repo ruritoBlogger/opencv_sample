@@ -1,5 +1,5 @@
 C++ファイルをコンパイルするときのオプション
--std=c++11 sender.cpp -lzmq -I/usr/local/include/opencv2 -I/usr/local/include/opencv -L/usr/local/lib -lopencv_core -lopencv_imgcodecs -lopencv_highgui
+-std=c++11 sender.cpp -lzmq -I/usr/local/include/opencv2 -I/usr/local/include/opencv -L/usr/local/lib -lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_videoio
 
 # 次やること
 
