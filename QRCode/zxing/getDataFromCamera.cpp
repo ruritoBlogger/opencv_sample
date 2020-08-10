@@ -30,6 +30,7 @@ int main()
     // カメラから情報を読み込み続ける
     while(cap.read(frame))
     {
+	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 	
         void* data = malloc(frame.total() * frame.elemSize());
