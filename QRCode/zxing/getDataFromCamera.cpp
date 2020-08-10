@@ -33,7 +33,6 @@ int main()
 	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 	
-        void* data = malloc(frame.total() * frame.elemSize());
 	auto result = ReadBarcode({frame.data, frame.rows, frame.cols, ImageFormat::RGBX}, hints);
 	std::cout << "data is " << TextUtfEncoding::ToUtf8(result.text()) << std::endl;	
         //qボタンが押されたとき処理を終了する
