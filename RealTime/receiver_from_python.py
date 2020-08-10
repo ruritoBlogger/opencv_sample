@@ -19,17 +19,17 @@ while(True):
         flag = True
     
     # ヘッダーを解釈する
-    rows = struct.unpack('i', byte_rows)
-    cols = struct.unpack('i', byte_cols)
-    mat_type = struct.unpack('i', byte_mat_type)
-
+    rows = int.from_bytes(byte_rows, byteorder='big', signed=True)
+    cols = int.from_bytes(byte_cols, byteorder='big', signed=True)
+    mat_type = int.from_bytes(byte_mat_type, byteorder='big', signed=True)
+    print(rows,cols)
     #実際に受信する
-    if mat_type[0] == 0:
+    if mat_type == 0:
         # Gray Scale
-        image = np.frombuffer(data, dtype=np.uint8).reshape((rows[0],cols[0]));
+        image = np.frombuffer(data, dtype=np.uint8).reshape((rows,cols));
     else:
         # BGR Color
-        image = np.frombuffer(data, dtype=np.uint8).reshape((rows[0],cols[0],3));
+        image = np.frombuffer(data, dtype=np.uint8).reshape((rows,cols,3));
 
     cnt += 1
 
