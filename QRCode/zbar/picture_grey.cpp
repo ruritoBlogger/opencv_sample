@@ -25,9 +25,10 @@ int main()
     // カメラから情報を読み込み続ける
     while(cap.read(frame))
     {
+	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 
-	zbar::Image image(frame.rows, frame.cols, "Y800", frame.data, frame.rows*frame.cols);
+	zbar::Image image(frame.rows, frame.cols, "GREY", frame.data, frame.rows*frame.cols);
 	
 	int n = scanner.scan(image);
 	
