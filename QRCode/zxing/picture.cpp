@@ -13,7 +13,7 @@ using namespace ZXing;
 int main()
 {
     // opencvのカメラの初期化
-    cv::VideoCapture cap(0);
+    cv::VideoCapture cap("./qr.png");
 
     if(!cap.isOpened())
     {
@@ -33,7 +33,7 @@ int main()
 	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 	
-	auto result = ReadBarcode({frame.data, frame.rows, frame.cols, ImageFormat::RGBX}, hints);
+	auto result = ReadBarcode({frame.data, frame.rows, frame.cols, ImageFormat::Lum}, hints);
 	std::cout << "data is " << TextUtfEncoding::ToUtf8(result.text()) << std::endl;	
         //qボタンが押されたとき処理を終了する
         const int key = cv::waitKey(1);
