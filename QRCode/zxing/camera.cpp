@@ -32,7 +32,7 @@ int main()
     {
         cv::imshow("real time",frame);
 	
-	auto result = ReadBarcode({frame.data, frame.rows, frame.cols, ImageFormat::RGB}, hints);
+	auto result = ReadBarcode({frame.data, frame.cols, frame.rows, ImageFormat::BGR}, hints);
 	std::cout << "data is " << TextUtfEncoding::ToUtf8(result.text()) << std::endl;	
         //qボタンが押されたとき処理を終了する
         const int key = cv::waitKey(1);
