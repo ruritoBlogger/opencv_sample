@@ -25,7 +25,6 @@ int main()
     // カメラから情報を読み込み続ける
     while(cap.read(frame))
     {
-	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 
 	zbar::Image image(frame.cols, frame.rows, "Y800", frame.data, frame.cols*frame.rows);

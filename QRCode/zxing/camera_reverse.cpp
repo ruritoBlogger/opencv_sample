@@ -1,7 +1,14 @@
 #include <iostream>
 #include <string>
 #include <opencv2/opencv.hpp>
-#include <zbar.h>
+#include <ZXing/ReadBarcode.h>
+#include <ZXing/TextUtfEncoding.h>
+#include <ZXing/BarcodeFormat.h>
+#include <ZXing/DecodeStatus.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "./thirdparty/stb/stb_image.h"
+
+using namespace ZXing;
 
 int main()
 {
@@ -14,29 +21,19 @@ int main()
       return -1;
     }
 
-    zbar::ImageScanner scanner;
-    // disable all
-    scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0);
+    // QRCodeのDecoderの設定
+    DecodeHints hints;
+    hints.setTryHarder(false);
 
-    // enable qr
-    scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
     cv::Mat frame;
     
     // カメラから情報を読み込み続ける
     while(cap.read(frame))
     {
         cv::imshow("real time",frame);
-
-	zbar::Image image(frame.cols, frame.rows, "BGR3", frame.data, frame.cols*frame.rows);
 	
-	int n = scanner.scan(image);
-	
-	  // Print results
-	  for(zbar::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
-	  {
-	    std::cout << "Data : " << symbol->get_data() << std::endl;
-	  }
-
+	auto result = ReadBarcode({frame.data, frame.cols, frame.rows, ImageFormat::Lum}, hints);
+	std::cout << "data is " << TextUtfEncoding::ToUtf8(result.text()) << std::endl;	
         //qボタンが押されたとき処理を終了する
         const int key = cv::waitKey(1);
         if(key == 'q') break;
