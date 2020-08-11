@@ -27,7 +27,7 @@ int main()
     {
         cv::imshow("real time",frame);
 
-	zbar::Image image(frame.rows, frame.cols, "Y800", frame.data, frame.rows*frame.cols);
+	zbar::Image image(frame.cols, frame.rows, "Y800", frame.data, frame.cols*frame.rows);
 	
 	int n = scanner.scan(image);
 	

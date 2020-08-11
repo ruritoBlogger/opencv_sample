@@ -28,7 +28,7 @@ int main()
 	cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
         cv::imshow("real time",frame);
 
-	zbar::Image image(frame.rows, frame.cols, "GREY", frame.data, frame.rows*frame.cols);
+	zbar::Image image(frame.cols, frame.rows, "GREY", frame.data, frame.cols*frame.rows);
 	
 	int n = scanner.scan(image);
 	
