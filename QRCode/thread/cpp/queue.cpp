@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <queue>
 
 class empty_queue : std::exception {
 public:
