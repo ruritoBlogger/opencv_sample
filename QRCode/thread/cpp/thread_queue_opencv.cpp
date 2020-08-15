@@ -2,6 +2,7 @@
 #include <string>
 #include <unistd.h>
 #include <thread>
+#include <zbar.h>
 #include "zmq_addon.hpp"
 #include <opencv2/opencv.hpp>
 #include "queue.cpp"
@@ -11,7 +12,7 @@ void my_free(void *data, void *hint)
         free(data);
 }
 
-void receive_image(safe_queue<cv::Mat*> &que)
+void receiver(safe_queue<cv::Mat*> &que)
 {
     zmq::context_t ctx;
     zmq::socket_t socket(ctx, zmq::socket_type::pull);
@@ -46,33 +47,51 @@ void receive_image(safe_queue<cv::Mat*> &que)
         else {
             img = cv::Mat(rows, cols, CV_8UC3, data);
         }
+        printf("rows=%d, cols=%d type=%d\n", rows, cols, type);
+	cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
 	que.push(&img);
     }
 }
 
-void show_image(safe_queue<cv::Mat*> &que)
+void show(safe_queue<cv::Mat*> &que)
 {
-    cv::Mat* frame;
-    while(true){
+    // zbarの初期設定
+    zbar::ImageScanner scanner;
+    // disable all
+    scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0);
+
+    // enable qr
+    scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
+    while(true)
+    {
+	cv::Mat* frame;
 	if( !que.empty() )
 	{
 	    frame = *que.pop().get();
-	    if( frame->size().width > 0 && frame->size().height > 0 )
+	    if( frame != nullptr && frame->size().width > 0 && frame->size().height > 0 )
 	    {
-            	cv::imshow("test", *frame);
-            	cv::waitKey(1);
+	    	zbar::Image image(frame->cols, frame->rows, "Y800", frame->data, frame->cols*frame->rows);
+	
+		int n = scanner.scan(image);
+
+	        // Print results
+	        for(zbar::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
+	        {
+	            std::cout << "Data : " << symbol->get_data() << std::endl;
+	        }
+	        cv::imshow("sample", *frame);
+	        cv::waitKey(1);
 	    }
 	}
     }
-    cv::destroyAllWindows();
 }
 
 int main()
 {
     safe_queue<cv::Mat*> que;
-    std::thread receiver(receive_image, std::ref(que));
-    std::thread shower(show_image, std::ref(que));
+    std::thread t1(receiver, std::ref(que));
+    std::thread t2(show, std::ref(que));
 
-    receiver.join();
-    shower.join();
+    t1.join();
+    t2.join();
 }
