@@ -11,12 +11,13 @@ void my_free(void *data, void *hint)
         free(data);
 }
 
-void receive_image(safe_queue<cv::Mat*> &que)
+int main()
 {
     zmq::context_t ctx;
     zmq::socket_t socket(ctx, zmq::socket_type::pull);
     socket.bind("tcp://*:11000");
 
+    safe_queue<cv::Mat> que;
     cv::Mat img;
     zmq::message_t rcv_msg;
     int rows, cols, type;
@@ -46,33 +47,18 @@ void receive_image(safe_queue<cv::Mat*> &que)
         else {
             img = cv::Mat(rows, cols, CV_8UC3, data);
         }
-	que.push(&img);
-    }
-}
-
-void show_image(safe_queue<cv::Mat*> &que)
-{
-    cv::Mat* frame;
-    while(true){
-	if( !que.empty() )
-	{
-	    frame = *que.pop().get();
-	    if( frame->size().width > 0 && frame->size().height > 0 )
-	    {
-            	cv::imshow("test", *frame);
-            	cv::waitKey(1);
-	    }
-	}
+        //printf("rows=%d, cols=%d type=%d\n", rows, cols, type);
+      	cv::imshow("sample", img);
+	cv::waitKey(1);	
+        /*	
+	que.push(img);
+        if( que.size() > 0 )
+        {
+            img = *que.pop().get();
+            cv::imshow("sample",img);
+            cv::waitKey(1);
+        }
+	*/
     }
     cv::destroyAllWindows();
-}
-
-int main()
-{
-    safe_queue<cv::Mat*> que;
-    std::thread receiver(receive_image, std::ref(que));
-    std::thread shower(show_image, std::ref(que));
-
-    receiver.join();
-    shower.join();
 }
