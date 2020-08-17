@@ -12,7 +12,7 @@ void my_free(void *data, void *hint)
         free(data);
 }
 
-void receiver(safe_queue<std::tuple<int, int, int, void*> > &que)
+void receiver(safe_queue<cv::Mat*> &que)
 {
     zmq::context_t ctx;
     zmq::socket_t socket(ctx, zmq::socket_type::pull);
@@ -41,22 +41,21 @@ void receiver(safe_queue<std::tuple<int, int, int, void*> > &que)
         socket.recv(&rcv_msg, 0);
         data = (void*)rcv_msg.data();
 
-	/*
         if (type == 2) {
             img = cv::Mat(rows, cols, CV_8UC1, data);
+	    //cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
         }
         else {
             img = cv::Mat(rows, cols, CV_8UC3, data);
+	    cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
         }
-        printf("rows=%d, cols=%d type=%d\n", rows, cols, type);
-	cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
 	que.push(&img);
-	*/
-	que.push(std::make_tuple(rows, cols, type, data));
+	//que.push(std::make_tuple(img.size().width, img.size().height, CV_8UC1, img.data));
+        printf("rows=%d, cols=%d type=%d\n", rows, cols, type);
     }
 }
 
-void show(safe_queue<std::tuple<int, int, int, void*> > &que)
+void show(safe_queue<cv::Mat*> &que)
 {
     // zbarの初期設定
     zbar::ImageScanner scanner;
@@ -68,13 +67,10 @@ void show(safe_queue<std::tuple<int, int, int, void*> > &que)
     while(true)
     {
 	cv::Mat frame;
-	std::tuple<int, int, int, void*> key;
 	if( !que.empty() )
 	{
-	    key = *que.pop().get();
-	    if( std::get<2>(key) == 2 ) frame = cv::Mat(std::get<0>(key), std::get<1>(key), CV_8UC1, std::get<3>(key));
-	    else frame = cv::Mat(std::get<0>(key), std::get<1>(key), CV_8UC3, std::get<3>(key));
-	    cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+	    frame = *(*que.pop().get());
+	    //cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
 
 	    if( frame.size().width > 0 && frame.size().height > 0 )
 	    {
@@ -96,7 +92,7 @@ void show(safe_queue<std::tuple<int, int, int, void*> > &que)
 
 int main()
 {
-    safe_queue<std::tuple<int, int, int, void*> > que;
+    safe_queue<cv::Mat*> que;
     std::thread t1(receiver, std::ref(que));
     std::thread t2(show, std::ref(que));
 
