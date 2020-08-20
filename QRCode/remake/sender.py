@@ -7,7 +7,7 @@ import heapq
 import time
 import random
 
-def sendData(img_que, flag_que):
+def sendData(img_que, flag_que, lock):
 
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
@@ -19,6 +19,11 @@ def sendData(img_que, flag_que):
         if( img_que.empty() and not flag_que.empty() ):
             flag = flag_que.get()
             if( flag == "predict" ):
+
+                # C++側の処理を終了させるメッセージを送信
+                array = [ np.array( [-1] ) ]
+                socket.send_multipart(array)
+
                 flag_que.put("end")
                 print("sendData done")
                 break
@@ -26,11 +31,20 @@ def sendData(img_que, flag_que):
                 flag_que.put(flag)
 
         if( not img_que.empty() ):
-            frame = img_que.get()
-            rows, cols = frame.shape[:2]
-            ndims = frame.ndim
-            array = [ np.array( [rows] ), np.array( [cols] ), np.array( [ndims] ), frame.data ]
+            lock.acquire()
+            array = [ np.array( [img_que.qsize()] ) ]
             socket.send_multipart(array)
+            print(img_que.qsize())
+
+            while( not img_que.empty() ):
+                frame = img_que.get()
+
+                rows, cols = frame.shape[:2]
+                ndims = frame.ndim
+                array = [ np.array( [rows] ), np.array( [cols] ), np.array( [ndims] ), frame.data ]
+                socket.send_multipart(array)
+            
+            lock.release()
 
 def getData(img_que, flag_que, is_fast_mode):
     capture = cv2.VideoCapture(0)
@@ -56,7 +70,7 @@ def getData(img_que, flag_que, is_fast_mode):
         if( not is_fast_mode ):
             time.sleep(1)
 
-def predict(img_que, send_que, flag_que, fast_mode_props):
+def predict(img_que, send_que, flag_que, fast_mode_props, lock):
 
     max_group_interval = fast_mode_props["max_interval"]/2
     group_que = []
@@ -78,15 +92,19 @@ def predict(img_que, send_que, flag_que, fast_mode_props):
             # ここで推論すると仮定
             key = random.random()
             heapq.heappush(group_que, (-1*key, frame) )
-            if( key < 0.2 ):
+            if( key < 1 ):
                 n_exist += 1
 
             # グループ形成終了条件
             if( time.time() - start_time >= max_group_interval ):
+
                 # QRコードが存在する可能性が高い場合はデコードする
                 if( n_exist > 0 ):
-                    p, great_frame = heapq.heappop(group_que)
-                    send_que.put(great_frame)
+                    lock.acquire() 
+                    while(len(group_que) > 0 ):
+                        p, great_frame = heapq.heappop(group_que)
+                        send_que.put(great_frame)
+                    lock.release()
 
                 # グループの初期化
                 group_que = []
@@ -102,7 +120,7 @@ def main():
     fast_mode_props = {}
     fast_mode_props["velocity"] = 1
     fast_mode_props["distance"] = 1
-    fast_mode_props["max_interval"] = 0.1
+    fast_mode_props["max_interval"] = 0.5
 
     img_que = queue.Queue()
     send_que = queue.Queue()
@@ -110,21 +128,23 @@ def main():
     # flag_queの要素 ["", "get", "predict", "end"]
     flag_que = queue.Queue() 
 
+    lock = threading.Lock()
+
     t1 = threading.Thread(target=getData, args=(img_que, flag_que, is_fast_mode, ))
     t1.start()
 
     # 高速モードの時は推論を行うスレッドを動作させる
     # また、推論を用いて選別した画像のみを送信する
     if( is_fast_mode ):
-        t2 = threading.Thread(target=predict, args=(img_que, send_que, flag_que, fast_mode_props, ))
+        t2 = threading.Thread(target=predict, args=(img_que, send_que, flag_que, fast_mode_props, lock, ))
         t2.start()
 
-        t3 = threading.Thread(target=sendData, args=(send_que, flag_que, ))
+        t3 = threading.Thread(target=sendData, args=(send_que, flag_que, lock, ))
         t3.setDaemon(True)
         t3.start()
 
     else:
-        t2 = threading.Thread(target=sendData, args=(img_que, flag_que, ))
+        t2 = threading.Thread(target=sendData, args=(img_que, flag_que, lock, ))
         t2.setDaemon(True)
         t2.start()
 

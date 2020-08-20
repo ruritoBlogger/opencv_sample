@@ -48,6 +48,11 @@ public:
         std::lock_guard<std::mutex> lock(m);
         return que.size();
     }
+    
+    bool clear() {
+        std::lock_guard<std::mutex> lock(m);
+        std::queue<T>().swap(que);
+    }
 
 private:
     std::queue<T> que;
