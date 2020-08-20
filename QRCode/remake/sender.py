@@ -36,6 +36,7 @@ def sendData(img_que, flag_que, lock):
             socket.send_multipart(array)
             print(img_que.qsize())
 
+            # 1グループ全ての画像を送信する
             while( not img_que.empty() ):
                 frame = img_que.get()
 
@@ -47,13 +48,16 @@ def sendData(img_que, flag_que, lock):
             lock.release()
 
 def getData(img_que, flag_que, is_fast_mode):
-    capture = cv2.VideoCapture(0)
+    capture = cv2.VideoCapture("./qr_fps60.mp4")
     start = time.time()
+    cnt = 0
     while(True):
+        cnt += 1
         ret, frame = capture.read()
 
         # スレッドの終了条件
-        if( frame is None or time.time() - start > 10):
+        #if( frame is None or time.time() - start > 10):
+        if( frame is None ):
             print("getData done")
 
             if( is_fast_mode ):
@@ -65,7 +69,8 @@ def getData(img_que, flag_que, is_fast_mode):
             break
         
         img_que.put(frame)
-
+        if( cnt%100 == 0 ):
+            time.sleep(1)
         # 低速モードの場合は1秒間隔を空けて撮影する
         if( not is_fast_mode ):
             time.sleep(1)
@@ -100,7 +105,7 @@ def predict(img_que, send_que, flag_que, fast_mode_props, lock):
 
                 # QRコードが存在する可能性が高い場合はデコードする
                 if( n_exist > 0 ):
-                    lock.acquire() 
+                    lock.acquire()
                     while(len(group_que) > 0 ):
                         p, great_frame = heapq.heappop(group_que)
                         send_que.put(great_frame)
@@ -120,7 +125,7 @@ def main():
     fast_mode_props = {}
     fast_mode_props["velocity"] = 1
     fast_mode_props["distance"] = 1
-    fast_mode_props["max_interval"] = 0.5
+    fast_mode_props["max_interval"] = 0.3
 
     img_que = queue.Queue()
     send_que = queue.Queue()

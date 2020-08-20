@@ -26,7 +26,6 @@ void receiver(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mt
     
     while(true)
     {
-        std::lock_guard<std::mutex> lock(mtx);
         // 同時に送られてくる画像のサイズの受信
         socket.recv(&rcv_msg, 0);
         num = *(int*)rcv_msg.data();
@@ -35,11 +34,13 @@ void receiver(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mt
         if( num == -1 )
         {
             flag = true;
+            std::cout << "break" << std::endl;
             break;
         }
 
         safe_queue<cv::Mat*> que;
-       
+
+        // 同時に送られてくる画像を全て受信する
         for( int i = 0; i < num; i++ )
         {
             //heightの受信
@@ -68,7 +69,10 @@ void receiver(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mt
             }
             que.push(&img);
         }
-        ary.push(que);
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            ary.push(que);
+        }
     }
 }
 
@@ -76,32 +80,33 @@ void show(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mtx)
 {
     // zbarの初期設定
     zbar::ImageScanner scanner;
-    // disable all
     scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 0);
-
-    // enable qr
     scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1);
+
     while(true)
     {
-        std::lock_guard<std::mutex> lock(mtx);
         cv::Mat frame;
-
-        // スレッドの終了条件
-        if( ary.empty() && flag )
+        safe_queue<safe_queue<cv::Mat*> > tmp;
         {
-            cv::destroyAllWindows();
-            break;
+            std::lock_guard<std::mutex> lock(mtx);
+            // スレッドの終了条件
+            if( ary.empty() && flag )
+            {
+                cv::destroyAllWindows();
+                break;
+            }
+            else if( !ary.empty() ) safe_queue<cv::Mat*> que(*ary.pop().get());
         }
 
         while( !ary.empty() )
         {
-            safe_queue<cv::Mat*> que(*ary.pop().get());
             std::cout << que.size() << std::endl;
+
+            // デコードに成功するまで1グループの画像全てをデコードする
             while( !que.empty() )
             {
                 frame = *(*que.pop().get());
                 bool is_decoded = false;
-                //cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
 
                 if( frame.size().width > 0 && frame.size().height > 0 )
                 {
@@ -109,15 +114,17 @@ void show(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mtx)
                     int n = scanner.scan(image);
 
                     if( n > 0 ) is_decoded = true;
-                    else std::cout << "Data : " << std::endl;
+                    //else std::cout << "Data : " << std::endl;
 
                     // Print results
                     for(zbar::Image::SymbolIterator symbol = image.symbol_begin(); symbol != image.symbol_end(); ++symbol)
                     {
                         std::cout << "Data : " << symbol->get_data() << std::endl;
                     }
+                    /*
                     cv::imshow("sample", frame);
                     cv::waitKey(1);
+                    */
                     // 画像のデコードに成功した場合は他の画像を全て破棄する
                     if( is_decoded ) que.clear();
                 }
