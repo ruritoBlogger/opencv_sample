@@ -31,8 +31,8 @@ def predict(img_que, send_que):
             frame = img_que.get()
             
             # ここで推論すると仮定
-            if( random.random() < 0.2 ):
-                send_que.put(frame)
+            #if( random.random() < 0.2 ):
+            send_que.put(frame)
 
 def main():
     img_que = queue.Queue()
