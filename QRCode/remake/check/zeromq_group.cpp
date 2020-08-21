@@ -88,7 +88,7 @@ void show(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mtx)
             std::lock_guard<std::mutex> lock(mtx);
             if( flag )
             {
-                std::cout << cnt << std::endl;
+                //std::cout << cnt << std::endl;
                 break;
             }
         }
@@ -100,7 +100,7 @@ void show(safe_queue<safe_queue<cv::Mat*> > &ary, bool &flag, std::mutex &mtx)
 
             //safe_queue<cv::Mat*> que(*tmp_ary.pop().get());
             // デコードに成功するまで1グループの画像全てをデコードする
-            std::cout << que.size() << std::endl;
+            //std::cout << que.size() << std::endl;
             cnt += que.size();
             while( !que.empty() )
             {

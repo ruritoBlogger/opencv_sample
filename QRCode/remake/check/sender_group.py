@@ -12,6 +12,7 @@ def sendData(img_que, flag_que, lock):
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.connect("tcp://localhost:11000")
+    tmp = 0
 
     while(True):
 
@@ -34,7 +35,7 @@ def sendData(img_que, flag_que, lock):
             lock.acquire()
             array = [ np.array( [img_que.qsize()] ) ]
             socket.send_multipart(array)
-            print(img_que.qsize())
+            tmp += img_que.qsize()
 
             # 1グループ全ての画像を送信する
             while( not img_que.empty() ):
