@@ -3,9 +3,8 @@ import cv2
 import threading
 import numpy as np
 import queue
-import heapq
 import time
-import random
+from operator import itemgetter
 
 def sendData(img_que, flag_que, lock):
 
@@ -26,40 +25,46 @@ def sendData(img_que, flag_que, lock):
                 socket.send_multipart(array)
 
                 flag_que.put("end")
-                print("sendData done")
+                print("sendData cnt is {}".format(tmp))
                 break
             else:
                 flag_que.put(flag)
 
         if( not img_que.empty() ):
-            lock.acquire()
-            array = [ np.array( [img_que.qsize()] ) ]
+            que = img_que.get()
+
+
+            array = [ np.array( [que.qsize()] ) ]
             socket.send_multipart(array)
-            tmp += img_que.qsize()
+            #tmp += que.qsize()
 
             # 1グループ全ての画像を送信する
-            while( not img_que.empty() ):
-                frame = img_que.get()
+            while( not que.empty() ):
+                tmp += 1
+                frame = que.get()
 
                 rows, cols = frame.shape[:2]
                 ndims = frame.ndim
                 array = [ np.array( [rows] ), np.array( [cols] ), np.array( [ndims] ), frame.data ]
                 socket.send_multipart(array)
-            
-            lock.release()
 
-def getData(img_que, flag_que, is_fast_mode):
+                """
+                frame = cv2.resize(frame, dsize=(800, 600))
+                cv2.imshow("test", frame)
+                cv2.waitKey(1)
+                """
+
+def getData(img_que, send_que, flag_que, is_fast_mode):
     capture = cv2.VideoCapture("./qr_fps60.mp4")
     start = time.time()
     cnt = 0
     while(True):
-        cnt += 1
         ret, frame = capture.read()
 
         # スレッドの終了条件
         #if( frame is None or time.time() - start > 10):
         if( frame is None ):
-            print("getData done")
+            print("getData cnt is {}".format(cnt))
 
             if( is_fast_mode ):
                 flag_que.put("get")
@@ -69,9 +74,11 @@ def getData(img_que, flag_que, is_fast_mode):
                 flag_que.put("predict")
             break
         
+        cnt += 1
         img_que.put(frame)
-        if( cnt%100 == 0 ):
-            time.sleep(1)
+
+        #if( cnt%10 == 0 ):
+            #time.sleep(1)
         # 低速モードの場合は1秒間隔を空けて撮影する
         if( not is_fast_mode ):
             time.sleep(1)
@@ -79,41 +86,49 @@ def getData(img_que, flag_que, is_fast_mode):
 def predict(img_que, send_que, flag_que, fast_mode_props, lock):
 
     max_group_interval = fast_mode_props["max_interval"]/2
-    group_que = []
+    group_list = []
     n_exist = 0
     start_time = time.time()
+    num = 0
 
     while(True):
 
         # スレッドの終了条件
-        if( img_que.empty() and not flag_que.empty() ):
-            print("predict done")
+        if( img_que.empty() and not flag_que.empty() and len(group_list) == 0 ):
+            print("predict cnt is {}".format(num))
             _ = flag_que.get()
             flag_que.put("predict")
             break
 
         if( not img_que.empty() ):
             frame = img_que.get()
+            num += 1
             
             # ここで推論すると仮定
-            key = random.random()
-            heapq.heappush(group_que, (-1*key, frame) )
-            if( key < 1 ):
+            group_list.append({"key": num, "img": frame})
+            if( True ):
                 n_exist += 1
 
             # グループ形成終了条件
-            if( time.time() - start_time >= max_group_interval ):
+            # 一定時間経過もしくは、img_queが空の時かつgroup_listに画像が格納されている時
+            if( time.time() - start_time >= max_group_interval
+                or (img_que.empty() and len(group_list) is not 0) ):
 
                 # QRコードが存在する可能性が高い場合はデコードする
                 if( n_exist > 0 ):
                     lock.acquire()
-                    while(len(group_que) > 0 ):
-                        p, great_frame = heapq.heappop(group_que)
-                        send_que.put(great_frame)
+                    group_que = queue.Queue()
+
+                    # QRコードが存在する可能性が高い順にソート
+                    group_list.sort(key=itemgetter("key"))
+                    for dic in group_list:
+                        group_que.put(dic["img"])
+
+                    send_que.put(group_que) 
                     lock.release()
 
                 # グループの初期化
-                group_que = []
+                group_list = []
                 n_exist = 0
                 start_time = time.time()
 
@@ -136,7 +151,7 @@ def main():
 
     lock = threading.Lock()
 
-    t1 = threading.Thread(target=getData, args=(img_que, flag_que, is_fast_mode, ))
+    t1 = threading.Thread(target=getData, args=(img_que, send_que, flag_que, is_fast_mode, ))
     t1.start()
 
     # 高速モードの時は推論を行うスレッドを動作させる
