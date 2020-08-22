@@ -37,9 +37,9 @@ def sendData(img_que, flag_que, lock):
             array = [ np.array( [que.qsize()] ) ]
             socket.send_multipart(array)
             #tmp += que.qsize()
-
             # 1グループ全ての画像を送信する
             while( not que.empty() ):
+                print(tmp)
                 tmp += 1
                 frame = que.get()
 
@@ -78,7 +78,7 @@ def getData(img_que, send_que, flag_que, is_fast_mode):
         img_que.put(frame)
 
         #if( cnt%10 == 0 ):
-            #time.sleep(1)
+        time.sleep(0.05)
         # 低速モードの場合は1秒間隔を空けて撮影する
         if( not is_fast_mode ):
             time.sleep(1)
@@ -94,7 +94,22 @@ def predict(img_que, send_que, flag_que, fast_mode_props, lock):
     while(True):
 
         # スレッドの終了条件
-        if( img_que.empty() and not flag_que.empty() and len(group_list) == 0 ):
+        if( img_que.empty() and not flag_que.empty()):
+            if( len(group_list) != 0 ):
+                # QRコードが存在する可能性が高い場合はデコードする
+                if( n_exist > 0 ):
+                    #print(len(group_list))
+                    lock.acquire()
+                    group_que = queue.Queue()
+
+                    # QRコードが存在する可能性が高い順にソート
+                    group_list.sort(key=itemgetter("key"))
+                    for dic in group_list:
+                        group_que.put(dic["img"])
+
+                    send_que.put(group_que) 
+                    lock.release()
+
             print("predict cnt is {}".format(num))
             _ = flag_que.get()
             flag_que.put("predict")
@@ -108,14 +123,13 @@ def predict(img_que, send_que, flag_que, fast_mode_props, lock):
             group_list.append({"key": num, "img": frame})
             if( True ):
                 n_exist += 1
-
             # グループ形成終了条件
             # 一定時間経過もしくは、img_queが空の時かつgroup_listに画像が格納されている時
-            if( time.time() - start_time >= max_group_interval
-                or (img_que.empty() and len(group_list) is not 0) ):
+            if( time.time() - start_time >= max_group_interval ):
 
                 # QRコードが存在する可能性が高い場合はデコードする
                 if( n_exist > 0 ):
+                    #print(len(group_list))
                     lock.acquire()
                     group_que = queue.Queue()
 
