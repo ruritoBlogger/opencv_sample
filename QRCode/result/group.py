@@ -6,7 +6,7 @@ import queue
 import time
 import copy
 from operator import itemgetter
-from modules.classifier import QrClassifier
+#from modules.classifier import QrClassifier
 from pathlib import Path
 from PIL import Image
 
@@ -104,10 +104,11 @@ def predict(img_que, send_que, flag_que, fast_mode_props, lock):
     num = 0
     
     # magic number
-    key = 0.5
+    key = 0.0
+    p=1
 
-    model_path = Path("../models/qr.tflite")
-    cls = QrClassifier(model_path=model_path)
+    #model_path = Path("../models/qr.tflite")
+    #cls = QrClassifier(model_path=model_path)
 
     while(True):
         """
@@ -147,13 +148,13 @@ def predict(img_que, send_que, flag_que, fast_mode_props, lock):
             frame = frame[:960]
             frame = cv2.resize(frame, (224, 224))
             pil_frame = Image.fromarray(frame)
-            """
             pil_frame = Image.fromarray(pil_frame)
             pil_frame = pil_frame.convert('L').convert('RGB')
             p = cls.classify(pil_frame)[0]
+            """
 
-            group_list.append({"key": -1*p, "img": frame})
-            if( p > key ):
+            group_list.append({"key": -1*1, "img": frame})
+            if( p >= key ):
                 n_exist += 1
             # グループ形成終了条件
             # 一定時間経過もしくは、img_queが空の時かつgroup_listに画像が格納されている時
