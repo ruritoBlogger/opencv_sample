@@ -19,7 +19,7 @@ async def manage_receive(is_last: bool) -> None:
             print(msg)
 
     while is_last:
-        tasks = [wait_message(soc) for i in range(10)]
+        tasks = [wait_message(soc) for i in range(3)]
         await asyncio.wait(tasks)
 
 if __name__ == "__main__":
